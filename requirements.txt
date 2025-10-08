@@ -1,0 +1,15 @@
+# Core AutoGen dependencies for multi-agent system
+autogen-agentchat>=0.7.5
+autogen-ext[ollama]>=0.7.5
+
+# Ollama client for local AI models
+ollama>=0.4.7
+
+# Data processing (optional, for future enhancements)
+pandas>=2.0.0
+
+# Development and testing dependencies (optional)
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+
+
