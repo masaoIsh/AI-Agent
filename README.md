@@ -54,7 +54,7 @@ A sophisticated multi-agent system that simulates financial analysts debating st
 
 - **🧮 Wassim (Fundamental Agent)**: Analyzes financial statements, ratios, and business fundamentals
 - **📊 Khizar (Sentiment Agent)**: Evaluates market sentiment, news, and social media trends  
-- **📈 Yugo (Valuation Agent)**: Performs DCF modeling and quantitative valuation analysis
+- **📈 Yugo (Valuation Agent)**: Performs DCF modeling, quantitative valuation analysis, and **ARIMA time series forecasting**
 
 ### Interactive Debate System
 
@@ -69,9 +69,17 @@ A sophisticated multi-agent system that simulates financial analysts debating st
 - **Offline Capable**: Works without internet connection once set up
 - **Customizable Models**: Use any Ollama-compatible model
 
+### Advanced Time Series Analysis
+
+- **ARIMA Forecasting**: Yugo_Valuation_Agent can perform sophisticated time series forecasting
+- **CSV Data Integration**: Load historical price data from CSV files for forecasting
+- **Statistical Analysis**: Automatic stationarity testing and parameter optimization
+- **Visualization**: Generate forecast plots with confidence intervals
+- **Trend Analysis**: Multi-period forecasting with volatility projections
+
 ## 📖 Usage Examples
 
-### Basic Stock Analysis
+### Basic Stock Analysis with CSV Data
 
 ```bash
 python interactive_cli.py
@@ -79,15 +87,18 @@ python interactive_cli.py
 
 **Example Session**:
 ```
-🤖 Financial Analysis Multi-Agent System
-============================================================
-Enter stock symbol (e.g., AAPL, TSLA, MSFT): AAPL
+🤖 Financial Analysis Multi-Agent System with ARIMA Forecasting
+======================================================================
+Enter CSV file path with historical data (or press Enter to skip): stock_data.csv
+
+Which equity/stock does this CSV data represent? (e.g., AAPL, TSLA, MSFT): AAPL
 
 Enter analysis prompt (or press Enter for default): 
 
 📊 Analyzing: AAPL
-Prompt: Provide analysis and recommendation whether a risk neutral investor should BUY or SELL this stock.
-============================================================
+Prompt: Analyze AAPL using the provided historical data and ARIMA forecasting analysis to determine whether a risk neutral investor should BUY or SELL this stock. Base your analysis on the time series data and forecasting results.
+📈 CSV Data: stock_data.csv
+======================================================================
 
 Initializing AI agents...
 ✅ Agents initialized successfully!
@@ -129,6 +140,52 @@ You can provide custom analysis prompts for specific scenarios:
 - "Should a growth investor BUY or SELL this stock for a 5-year horizon?"
 - "Analyze this stock for a value investor focused on dividend yield"
 - "Provide analysis for a day trader considering this position"
+
+### CSV-First Workflow
+
+The system now uses a CSV-first approach where historical data drives the analysis:
+
+```bash
+python interactive_cli.py
+```
+
+**New Workflow**:
+```
+🤖 Financial Analysis Multi-Agent System with ARIMA Forecasting
+======================================================================
+Enter CSV file path with historical data (or press Enter to skip): stock_data.csv
+
+Which equity/stock does this CSV data represent? (e.g., AAPL, TSLA, MSFT): AAPL
+
+📈 Conducting ARIMA Analysis on: stock_data.csv
+======================================================================
+✅ Successfully loaded 1000 data points
+📅 Date range: 2020-01-01 to 2023-12-31
+📊 Value column: Close_Price
+📊 Stationarity Test Results:
+   ADF Statistic: -2.45
+   p-value: 0.12
+   Stationary: No
+✅ Series made stationary with first difference
+✅ Optimal ARIMA parameters: (2, 1, 1)
+🔮 Generating 30-period forecast...
+✅ Forecast generated for 30 periods
+
+📈 CRITICAL: ARIMA Time Series Analysis Results for AAPL:
+[Detailed forecasting report with confidence intervals, trends, and insights]
+
+🤖 Agents are now analyzing and debating...
+======================================================================
+```
+
+**CSV File Format**:
+Your CSV should have columns like:
+```csv
+Date,Close_Price,Volume
+2020-01-01,100.50,1500000
+2020-01-02,101.25,1600000
+...
+```
 
 ## 🛠️ System Architecture
 
@@ -189,8 +246,10 @@ Edit the system messages in `interactive_cli.py` (lines 33-101) to customize age
 Ai-Agent/
 ├── README.md                 # This file
 ├── interactive_cli.py        # Main interactive CLI application
+├── arima_forecaster.py       # ARIMA forecasting module
 ├── requirements.txt          # Python dependencies
 ├── setup.py                  # Quick setup script
+├── test_arima.py            # ARIMA functionality tests
 ├── .gitignore               # Git ignore file
 └── autogen/                 # AutoGen framework (submodule)
 ```
@@ -234,6 +293,33 @@ pip install -r requirements.txt
 Python 3.10+ required
 ```
 **Solution**: Install Python 3.10 or higher
+
+**5. ARIMA Dependencies Missing**
+```
+ModuleNotFoundError: No module named 'statsmodels'
+```
+**Solution**: Install ARIMA dependencies:
+```bash
+pip install pandas numpy matplotlib statsmodels seaborn
+```
+
+**6. CSV File Not Found**
+```
+❌ CSV file not found: /path/to/file.csv
+```
+**Solution**: 
+- Check the file path is correct
+- Ensure the file exists and is readable
+- Use absolute path if needed: `/Users/username/Downloads/data.csv`
+
+**7. CSV Format Issues**
+```
+❌ Failed to load CSV data
+```
+**Solution**: Ensure your CSV has:
+- Proper date column (e.g., Date, timeOpen, timestamp)
+- Numeric value column (e.g., close, price, value)
+- Valid CSV format
 
 ### Getting Help
 

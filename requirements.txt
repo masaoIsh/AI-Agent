@@ -5,8 +5,13 @@ autogen-ext[ollama]>=0.7.5
 # Ollama client for local AI models
 ollama>=0.4.7
 
-# Data processing (optional, for future enhancements)
+# Data processing and time series analysis
 pandas>=2.0.0
+numpy>=1.24.0
+scipy>=1.10.0
+statsmodels>=0.14.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
 
 # Development and testing dependencies (optional)
 pytest>=7.0.0
