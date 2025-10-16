@@ -1,6 +1,6 @@
 # AI Financial Analysis Multi-Agent System
 
-A sophisticated multi-agent system that simulates financial analysts debating stock recommendations. Three specialized AI agents (Fundamental, Sentiment, and Valuation analysts) provide BUY/SELL recommendations and engage in interactive debates to reach consensus.
+A sophisticated multi-agent system that combines technical indicator-based forecasting with macro VAR/Granger causality analysis. Two specialized AI agents (Fundamental and Valuation analysts) provide BUY/SELL recommendations based on comprehensive quantitative analysis and engage in interactive debates to reach consensus.
 
 ## 🚀 Quick Start
 
@@ -50,11 +50,10 @@ A sophisticated multi-agent system that simulates financial analysts debating st
 
 ## 🎯 Features
 
-### Three Specialized AI Agents
+### Two Specialized AI Agents
 
-- **🧮 Wassim (Fundamental Agent)**: Analyzes financial statements, ratios, and business fundamentals
-- **📊 Khizar (Sentiment Agent)**: Evaluates market sentiment, news, and social media trends  
-- **📈 Yugo (Valuation Agent)**: Performs DCF modeling, quantitative valuation analysis, and **ARIMA time series forecasting**
+- **🧮 Wassim (Fundamental Agent)**: Analyzes financial statements, ratios, business fundamentals, and **macro VAR/Granger causality analysis**
+- **📈 Yugo (Valuation Agent)**: Performs DCF modeling, quantitative valuation analysis, and **technical indicator-based forecasting**
 
 ### Interactive Debate System
 
@@ -69,17 +68,18 @@ A sophisticated multi-agent system that simulates financial analysts debating st
 - **Offline Capable**: Works without internet connection once set up
 - **Customizable Models**: Use any Ollama-compatible model
 
-### Advanced Time Series Analysis
+### Advanced Quantitative Analysis
 
-- **ARIMA Forecasting**: Yugo_Valuation_Agent can perform sophisticated time series forecasting
-- **CSV Data Integration**: Load historical price data from CSV files for forecasting
-- **Statistical Analysis**: Automatic stationarity testing and parameter optimization
-- **Visualization**: Generate forecast plots with confidence intervals
-- **Trend Analysis**: Multi-period forecasting with volatility projections
+- **Technical Indicator Forecasting**: RandomForest-based model with RSI, Bollinger Bands, MACD, and realized volatility
+- **Walk-Forward Validation**: Robust out-of-sample testing with MSE/MAE metrics
+- **Macro VAR Analysis**: Granger causality testing of economic indicators on asset returns
+- **Dual CSV Input**: Separate macro economic data and price data for comprehensive analysis
+- **Visualization**: Generate forecast plots with technical indicators overlaid
+- **1-Day & 1-Week Forecasts**: Multi-horizon predictions with performance metrics
 
 ## 📖 Usage Examples
 
-### Basic Stock Analysis with CSV Data
+### Basic Stock Analysis with Dual CSV Input
 
 ```bash
 python interactive_cli.py
@@ -246,10 +246,12 @@ Edit the system messages in `interactive_cli.py` (lines 33-101) to customize age
 Ai-Agent/
 ├── README.md                 # This file
 ├── interactive_cli.py        # Main interactive CLI application
-├── arima_forecaster.py       # ARIMA forecasting module
+├── indicator_forecaster.py   # Technical indicator forecasting module
+├── macro_var_analyzer.py     # Macro VAR/Granger causality analysis
+├── arima_forecaster.py       # Legacy ARIMA forecasting module
 ├── requirements.txt          # Python dependencies
 ├── setup.py                  # Quick setup script
-├── test_arima.py            # ARIMA functionality tests
+├── test_arima.py            # Legacy ARIMA tests
 ├── .gitignore               # Git ignore file
 └── autogen/                 # AutoGen framework (submodule)
 ```

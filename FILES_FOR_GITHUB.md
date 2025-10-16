@@ -103,3 +103,6 @@ Ai-Agent/
 - Users will need to install Ollama and download the Llama3.2 model locally
 - The system works completely offline once set up (no API keys needed)
 - All dependencies are clearly listed in `requirements.txt`
+
+
+
