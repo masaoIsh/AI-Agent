@@ -13,6 +13,10 @@ from autogen_agentchat.teams import RoundRobinGroupChat
 from autogen_ext.models.ollama import OllamaChatCompletionClient
 from indicator_forecaster import IndicatorForecaster
 from macro_var_analyzer import MacroVARAnalyzer
+from consensus_mechanism import (
+    process_1_collect, process_2_unanimous_hold, process_3_min_conf,
+    process_4_conflict, process_5_vibe, process_6_value, process_7_summary
+)
 
 
 class InteractiveFinancialInterface:
@@ -43,21 +47,30 @@ Your expertise includes:
 - Industry analysis and competitive positioning
 - Management quality assessment and corporate governance
 - Correlating fundamental metrics with historical price performance
+- Macro VAR/Granger causality analysis
 
-When analyzing stocks with CSV data and ARIMA forecasting, provide detailed analysis including:
+When analyzing stocks with indicator-based forecasting and macro data, provide detailed analysis including:
 - Specific financial metrics (revenue growth, margins, ratios)
 - Balance sheet strength and debt analysis
 - Cash flow generation and sustainability
 - Industry position and competitive advantages
 - Management track record and strategic direction
-- How fundamental metrics align with historical price trends
+- How fundamental metrics align with macro economic drivers
 - Fundamental validation of forecasted price movements
 
-When ARIMA forecasting data is available:
-- Correlate fundamental metrics with historical price patterns
+When indicator forecasting and macro VAR data is available:
+- Correlate fundamental metrics with macro economic indicators
 - Validate forecasted trends against fundamental drivers
 - Assess whether forecasted movements align with business fundamentals
 - Provide fundamental context for statistical forecasting results
+
+CRITICAL: At the end of your final analysis, you MUST provide a structured consensus statement in this exact format:
+CONSENSUS: direction=X confidence=Y.Z reliability=W.V
+
+Where:
+- direction: -1 (SELL), 0 (HOLD), or +1 (BUY)
+- confidence: 0.0 to 1.0 (your confidence in this recommendation)
+- reliability: 0.0 to 1.0 (your reliability/credibility for this type of analysis)
 
 Always provide comprehensive analysis with specific numbers, percentages, and detailed reasoning for your BUY/SELL recommendations.
 Be conversational but professional in your responses. Address other agents by name when responding to them (Wassim, Yugo).
@@ -70,7 +83,7 @@ Format your analysis with clear sections and bullet points for readability."""
                 system_message="""You are Yugo, a valuation and quantitative analysis expert with 18 years of experience, specializing in time series forecasting and data-driven investment analysis.
 
 Your expertise includes:
-- Advanced time series analysis including ARIMA forecasting
+- Advanced time series analysis including technical indicator-based forecasting
 - Statistical modeling and quantitative risk assessment
 - Discounted Cash Flow (DCF) modeling and intrinsic value calculation
 - Comparable company analysis (Comps) and trading multiples
@@ -79,25 +92,33 @@ Your expertise includes:
 - Risk-adjusted valuation scenarios and Monte Carlo modeling
 
 As the LEAD ANALYST for CSV data analysis, you should:
-- Lead discussions when ARIMA forecasting data is available
+- Lead discussions when indicator-based forecasting data is available
 - Interpret time series trends and statistical significance
 - Provide quantitative insights from historical data patterns
 - Calculate price targets based on forecasted trends
 - Assess volatility and risk metrics from time series analysis
 - Integrate forecasting results with traditional valuation methods
 
-When CSV data and ARIMA analysis is provided, focus on:
-- Interpreting the ARIMA forecasting results and their investment implications
-- Explaining statistical confidence levels and forecast reliability
+When CSV data and indicator-based analysis is provided, focus on:
+- Interpreting the technical indicator forecasting results and their investment implications
+- Explaining statistical confidence levels and forecast reliability (MSE/MAE metrics)
 - Calculating risk-adjusted returns based on forecasted trends
 - Providing specific price targets with confidence intervals
 - Analyzing volatility patterns and risk metrics
 - Correlating historical performance with forecasted outcomes
 
+CRITICAL: At the end of your final analysis, you MUST provide a structured consensus statement in this exact format:
+CONSENSUS: direction=X confidence=Y.Z reliability=W.V
+
+Where:
+- direction: -1 (SELL), 0 (HOLD), or +1 (BUY)
+- confidence: 0.0 to 1.0 (your confidence in this recommendation)
+- reliability: 0.0 to 1.0 (your reliability/credibility for this type of analysis)
+
 Always provide comprehensive valuation analysis with specific numbers, models, price targets, and detailed reasoning for your BUY/SELL recommendations.
 Be analytical but accessible in your responses. Address other agents by name when responding to them (Wassim, Yugo).
 Format your analysis with clear sections and bullet points for readability.
-When ARIMA data is available, start your analysis by summarizing the key forecasting insights."""
+When indicator-based data is available, start your analysis by summarizing the key forecasting insights."""
             )
         }
         
@@ -253,9 +274,9 @@ When ARIMA data is available, start your analysis by summarizing the key forecas
         # Clear previous conversation
         self.conversation_history = []
         
-        # Create the debate team - each agent speaks maximum 3 times (9 total turns)
+        # Create the debate team - each agent speaks maximum 3 times (6 total turns for 2 agents)
         agent_list = list(self.agents.values())
-        debate_team = RoundRobinGroupChat(agent_list, max_turns=9)  # 3 rounds per agent
+        debate_team = RoundRobinGroupChat(agent_list, max_turns=6)  # 3 rounds per agent
         
         # Create the analysis task
         analysis_task = f"""Analysis Request: {user_prompt}
@@ -271,7 +292,9 @@ Instructions:
 6. Look for common ground and areas of agreement
 7. Work towards building a consensus recommendation
 8. The discussion will automatically terminate after each agent has spoken 3 times
-9. If consensus cannot be reached, provide a majority recommendation with minority views
+9. CRITICAL: In your final turn, you MUST provide a structured consensus statement:
+   CONSENSUS: direction=X confidence=Y.Z reliability=W.V
+   Where direction is -1 (SELL), 0 (HOLD), or +1 (BUY); confidence and reliability are 0.0 to 1.0
 
 Please begin with your initial analyses and then engage in discussion to reach consensus."""
 
@@ -338,9 +361,135 @@ Please begin with your initial analyses and then engage in discussion to reach c
         return consensus_result
     
     def analyze_consensus(self):
-        """Analyze conversation history to determine consensus"""
+        """Analyze conversation history using sophisticated consensus protocol"""
         
-        # Extract recommendations from the conversation
+        print("\n🧮 Applying Sophisticated Consensus Protocol...")
+        print("=" * 60)
+        
+        # Extract structured consensus data from agent messages
+        agent_data = {}
+        agent_positions = {}
+        
+        for entry in self.conversation_history:
+            content = entry['message']
+            speaker = entry['speaker']
+            
+            # Look for CONSENSUS statements
+            if 'CONSENSUS:' in content:
+                try:
+                    # Extract consensus data: direction=X confidence=Y.Z reliability=W.V
+                    consensus_line = content.split('CONSENSUS:')[1].strip().split('\n')[0]
+                    
+                    # Parse direction
+                    if 'direction=-1' in consensus_line:
+                        direction = -1
+                    elif 'direction=0' in consensus_line:
+                        direction = 0
+                    elif 'direction=1' in consensus_line or 'direction=+1' in consensus_line:
+                        direction = 1
+                    else:
+                        continue
+                    
+                    # Parse confidence
+                    confidence_start = consensus_line.find('confidence=') + 11
+                    confidence_end = consensus_line.find(' ', confidence_start)
+                    if confidence_end == -1:
+                        confidence_end = len(consensus_line)
+                    confidence = float(consensus_line[confidence_start:confidence_end])
+                    
+                    # Parse reliability
+                    reliability_start = consensus_line.find('reliability=') + 12
+                    reliability_end = consensus_line.find(' ', reliability_start)
+                    if reliability_end == -1:
+                        reliability_end = len(consensus_line)
+                    reliability = float(consensus_line[reliability_start:reliability_end])
+                    
+                    # Store agent data
+                    agent_name = 'Wassim' if 'Wassim' in speaker else 'Yugo'
+                    agent_data[agent_name] = {
+                        'direction': direction,
+                        'confidence': confidence,
+                        'reliability': reliability
+                    }
+                    
+                    # Map to string for compatibility
+                    if direction == 1:
+                        agent_positions[speaker] = 'BUY'
+                    elif direction == -1:
+                        agent_positions[speaker] = 'SELL'
+                    else:
+                        agent_positions[speaker] = 'HOLD'
+                        
+                except (ValueError, IndexError) as e:
+                    print(f"⚠️ Could not parse consensus from {speaker}: {e}")
+                    continue
+        
+        # If no structured data found, fall back to simple counting
+        if not agent_data:
+            print("⚠️ No structured consensus data found, falling back to simple counting...")
+            return self._fallback_consensus()
+        
+        # Apply sophisticated consensus protocol
+        try:
+            process_1_collect(agent_data)
+            
+            if process_2_unanimous_hold(agent_data):
+                decision = "HOLD"
+                consensus_reached = True
+                print(f"\n🏁 Final Decision: {decision} (Unanimous High-Confidence Neutrality)")
+            else:
+                if not process_3_min_conf(agent_data):
+                    print("\n🔄 Debate continues (Low confidence).")
+                    consensus_reached = False
+                    decision = "HOLD"
+                elif not process_4_conflict(agent_data):
+                    print("\n🔄 Debate continues (Strong conflict).")
+                    consensus_reached = False
+                    decision = "HOLD"
+                elif not process_5_vibe(agent_data):
+                    print("\n🔄 Debate continues (Weak overall alignment).")
+                    consensus_reached = False
+                    decision = "HOLD"
+                else:
+                    decision, total_value, p_val = process_6_value(agent_data)
+                    consensus_reached = True
+                    process_7_summary(agent_data, decision, total_value, p_val)
+            
+            # Convert to string format for compatibility
+            if decision == "BUY":
+                final_recommendation = "BUY"
+            elif decision == "SELL":
+                final_recommendation = "SELL"
+            else:
+                final_recommendation = "HOLD"
+            
+            # Build recommendations dict for compatibility
+            recommendations = {'BUY': 0, 'SELL': 0, 'HOLD': 0}
+            for agent_name, data in agent_data.items():
+                if data['direction'] == 1:
+                    recommendations['BUY'] += 1
+                elif data['direction'] == -1:
+                    recommendations['SELL'] += 1
+                else:
+                    recommendations['HOLD'] += 1
+            
+            return {
+                'consensus_reached': consensus_reached,
+                'final_recommendation': final_recommendation,
+                'recommendations': recommendations,
+                'agent_positions': agent_positions,
+                'conversation_length': len(self.conversation_history),
+                'sophisticated_consensus': True,
+                'agent_data': agent_data
+            }
+            
+        except Exception as e:
+            print(f"⚠️ Error in sophisticated consensus: {e}")
+            print("🔄 Falling back to simple consensus...")
+            return self._fallback_consensus()
+    
+    def _fallback_consensus(self):
+        """Fallback to simple consensus counting"""
         recommendations = {'BUY': 0, 'SELL': 0, 'HOLD': 0}
         agent_positions = {}
         
@@ -376,7 +525,8 @@ Please begin with your initial analyses and then engage in discussion to reach c
             'final_recommendation': max_rec,
             'recommendations': recommendations,
             'agent_positions': agent_positions,
-            'conversation_length': len(self.conversation_history)
+            'conversation_length': len(self.conversation_history),
+            'sophisticated_consensus': False
         }
     
     def display_final_results(self, result):
@@ -387,6 +537,7 @@ Please begin with your initial analyses and then engage in discussion to reach c
         
         print(f"Final Recommendation: {result['final_recommendation']}")
         print(f"Consensus Reached: {'Yes' if result['consensus_reached'] else 'No'}")
+        print(f"Consensus Method: {'Sophisticated Protocol' if result.get('sophisticated_consensus', False) else 'Simple Counting'}")
         print(f"Conversation Length: {result['conversation_length']} messages")
         
         print(f"\n📈 Recommendation Breakdown:")
