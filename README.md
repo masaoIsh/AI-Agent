@@ -72,12 +72,28 @@ A sophisticated multi-agent system that combines technical indicator-based forec
 
 ### Advanced Quantitative Analysis
 
-- **Technical Indicator Forecasting**: RandomForest-based model with RSI, Bollinger Bands, MACD, and realized volatility
+#### Technical Indicator Forecasting
+- **RandomForest Model**: Machine learning approach using technical indicators as features
+- **RSI (Relative Strength Index)**: Momentum oscillator measuring overbought/oversold conditions (14-period)
+- **Bollinger Bands**: Price volatility bands with moving average and standard deviation (20-period, 2σ)
+- **MACD (Moving Average Convergence Divergence)**: Trend-following momentum indicator (12,26,9 periods)
+- **Realized Volatility**: Annualized volatility from 20-day rolling log returns
 - **Walk-Forward Validation**: Robust out-of-sample testing with MSE/MAE metrics
-- **Macro VAR Analysis**: Granger causality testing of economic indicators on asset returns
-- **Dual CSV Input**: Separate macro economic data and price data for comprehensive analysis
-- **Visualization**: Generate forecast plots with technical indicators overlaid
 - **1-Day & 1-Week Forecasts**: Multi-horizon predictions with performance metrics
+
+#### Macro VAR Analysis & Granger Causality
+- **VAR Model**: Vector Autoregression analyzing relationships between macro variables and asset returns
+- **Granger Causality Testing**: Statistical test to determine if macro variables predict asset returns
+- **Economic Indicators**: CPI, Unemployment, 10Y Treasury, Fed Funds Rate, Industrial Production Index
+- **Statistical Significance**: p-values indicate strength of causal relationships
+- **Direction & Strength**: Positive/negative correlations with magnitude measurements
+- **Dual CSV Input**: Separate macro economic data and price data for comprehensive analysis
+
+#### Visualization & Output
+- **Forecast Plots**: Price charts with technical indicators overlaid
+- **Indicator Panels**: Separate RSI and MACD visualization panels
+- **Performance Metrics**: MSE/MAE for 1-day and 1-week ahead forecasts
+- **Causality Tables**: Structured output showing which macro variables drive returns
 
 ### Sophisticated Consensus Protocol
 
@@ -186,41 +202,101 @@ python interactive_cli.py
 
 **New Workflow**:
 ```
-🤖 Financial Analysis Multi-Agent System with ARIMA Forecasting
+🤖 Financial Analysis Multi-Agent System with Indicator-Based Forecasting + Macro VAR
 ======================================================================
-Enter CSV file path with historical data (or press Enter to skip): stock_data.csv
+Enter MACRO CSV path ['CPI','Unemployment','10Y_Treasury','FedFundsRate','IP_Index']: macro_data.csv
+Enter PRICE CSV path with historical price data: stock_data.csv
 
 Which equity/stock does this CSV data represent? (e.g., AAPL, TSLA, MSFT): AAPL
 
-📈 Conducting ARIMA Analysis on: stock_data.csv
+📈 Conducting Indicator-Based Forecasting on: stock_data.csv
 ======================================================================
 ✅ Successfully loaded 1000 data points
 📅 Date range: 2020-01-01 to 2023-12-31
-📊 Value column: Close_Price
-📊 Stationarity Test Results:
-   ADF Statistic: -2.45
-   p-value: 0.12
-   Stationary: No
-✅ Series made stationary with first difference
-✅ Optimal ARIMA parameters: (2, 1, 1)
-🔮 Generating 30-period forecast...
-✅ Forecast generated for 30 periods
+📊 Value column: close
+📊 Technical Indicators: RSI(14), Bollinger Bands(20,2σ), MACD(12,26,9), Realized Vol(20)
+1D-ahead -> MSE: 0.0234, MAE: 0.1234
+1W-ahead -> MSE: 0.0456, MAE: 0.2345
+... walk-forward progress: 50/200 steps
+... walk-forward progress: 100/200 steps
+... walk-forward progress: 150/200 steps
+... walk-forward progress: 200/200 steps
+✅ Forecast plot saved as: indicator_forecast_20241208_143022_price.png
 
-📈 CRITICAL: ARIMA Time Series Analysis Results for AAPL:
-[Detailed forecasting report with confidence intervals, trends, and insights]
+📑 Macro VAR/Granger Causality Analysis Results:
+variable       p_value  direction  strength  interpretation
+CPI            0.0234   pos        0.3456   Strong predictor (p<0.05)
+10Y_Treasury   0.0456   neg        0.2345   Significant predictor
+Unemployment   0.1234   pos        0.1234   Moderate predictor
+FedFundsRate   0.2345   neg        0.0987   Weak predictor
+IP_Index       0.4567   pos        0.0678   Not significant
 
 🤖 Agents are now analyzing and debating...
 ======================================================================
 ```
 
-**CSV File Format**:
-Your CSV should have columns like:
+**Required CSV Formats**:
+
+**Macro CSV** (required columns):
+```csv
+Date,CPI,Unemployment,10Y_Treasury,FedFundsRate,IP_Index
+2020-01-01,2.1,3.5,1.8,1.5,100.0
+2020-02-01,2.2,3.4,1.9,1.6,101.2
+...
+```
+
+**Price CSV** (flexible format):
 ```csv
 Date,Close_Price,Volume
 2020-01-01,100.50,1500000
 2020-01-02,101.25,1600000
 ...
 ```
+
+## 📊 Technical Analysis Details
+
+### Technical Indicators Explained
+
+**RSI (Relative Strength Index)**:
+- **Formula**: 100 - (100 / (1 + RS)) where RS = Average Gain / Average Loss
+- **Period**: 14-day exponential moving average of gains/losses
+- **Interpretation**: >70 overbought, <30 oversold, 50 neutral
+- **Usage**: Identifies momentum shifts and potential reversal points
+
+**Bollinger Bands**:
+- **Components**: Middle band (20-period SMA), Upper band (+2σ), Lower band (-2σ)
+- **Width**: Measures volatility (Upper - Lower = 4σ)
+- **Interpretation**: Price near bands suggests overbought/oversold conditions
+- **Usage**: Volatility-based support/resistance levels
+
+**MACD (Moving Average Convergence Divergence)**:
+- **Components**: MACD line (12-EMA - 26-EMA), Signal line (9-EMA of MACD), Histogram (MACD - Signal)
+- **Interpretation**: MACD above Signal = bullish, below = bearish
+- **Usage**: Trend changes and momentum confirmation
+
+**Realized Volatility**:
+- **Calculation**: 20-day rolling standard deviation of log returns × √252
+- **Interpretation**: Annualized volatility measure
+- **Usage**: Risk assessment and volatility regime identification
+
+### Macro VAR Analysis Details
+
+**Vector Autoregression (VAR)**:
+- **Purpose**: Models dynamic relationships between multiple time series
+- **Method**: Each variable regressed on lagged values of all variables
+- **Lag Selection**: Automatic selection based on AIC/BIC criteria (max 6 lags)
+
+**Granger Causality**:
+- **Definition**: Variable X Granger-causes Y if X helps predict Y beyond Y's own history
+- **Test**: F-test comparing restricted vs unrestricted VAR models
+- **Interpretation**: p-value < 0.05 indicates significant causality
+
+**Economic Indicators**:
+- **CPI**: Consumer Price Index (inflation measure)
+- **Unemployment**: Unemployment rate (economic health indicator)
+- **10Y Treasury**: 10-year Treasury yield (interest rate proxy)
+- **Fed Funds Rate**: Federal funds rate (monetary policy indicator)
+- **IP Index**: Industrial Production Index (economic activity measure)
 
 ## 🛠️ System Architecture
 
