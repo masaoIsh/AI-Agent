@@ -57,10 +57,12 @@ A sophisticated multi-agent system that combines technical indicator-based forec
 
 ### Interactive Debate System
 
-- **Round-Robin Debates**: Agents engage in structured 3-round discussions when they disagree
-- **Consensus Detection**: System automatically identifies when agents reach agreement
+- **Structured 3-Round Debates**: Each agent speaks exactly 3 times maximum (6 total turns for 2 agents)
+- **Sophisticated Consensus Protocol**: 7-step statistical validation with confidence/reliability weighting
+- **Automatic Termination**: System automatically stops after each agent completes 3 turns
+- **Statistical Validation**: t-test and weighted scoring for investment decisions
 - **Real-time Analysis**: Watch agents debate and build consensus in real-time
-- **Comprehensive Reports**: Get detailed breakdowns of individual agent positions
+- **Comprehensive Reports**: Get detailed breakdowns of individual agent positions with consensus method
 
 ### Local AI Processing
 
@@ -76,6 +78,21 @@ A sophisticated multi-agent system that combines technical indicator-based forec
 - **Dual CSV Input**: Separate macro economic data and price data for comprehensive analysis
 - **Visualization**: Generate forecast plots with technical indicators overlaid
 - **1-Day & 1-Week Forecasts**: Multi-horizon predictions with performance metrics
+
+### Sophisticated Consensus Protocol
+
+- **7-Step Decision Process**: Structured validation with statistical rigor
+- **Rule-Based Validation**: 4 rules for conflict detection and confidence thresholds
+- **Statistical Testing**: t-test validation with p-value < 0.05 significance
+- **Weighted Scoring**: Combines direction, confidence, and reliability metrics
+- **Transparent Process**: Detailed logging of each consensus step
+- **Fallback Mechanism**: Graceful degradation to simple counting if needed
+
+**Consensus Rules:**
+1. **Minimum Confidence**: All agents must have confidence ≥ 0.5
+2. **Conflict Detection**: Identifies reliable agents with opposing views
+3. **Vibe Check**: Normalized directional coherence (|V| ≥ 0.5)
+4. **Unanimous Hold**: Shortcut for confident neutral positions
 
 ## 📖 Usage Examples
 
@@ -107,27 +124,45 @@ Initializing AI agents...
 ============================================================
 
 🧮 Wassim (Fundamental Agent) - Round 1, Turn 1:
-Apple Inc. demonstrates strong fundamental metrics...
-
-📊 Khizar (Sentiment Agent) - Round 1, Turn 1:
-Market sentiment for Apple has been mixed recently...
+Based on the macro VAR analysis, CPI shows strong positive Granger causality...
 
 📈 Yugo (Valuation Agent) - Round 1, Turn 1:
-Based on my DCF analysis, Apple appears undervalued...
+Based on the indicator-based forecasting, 1D MSE of 0.0234 suggests strong predictive power...
+
+🧮 Wassim (Fundamental Agent) - Round 3, Turn 3:
+[Final analysis with consensus statement]
+CONSENSUS: direction=1 confidence=0.8 reliability=0.9
+
+📈 Yugo (Valuation Agent) - Round 3, Turn 3:
+[Final analysis with consensus statement]
+CONSENSUS: direction=1 confidence=0.7 reliability=0.8
+
+🧮 Applying Sophisticated Consensus Protocol...
+============================================================
+[Step 1] Collecting agent inputs
+  Wassim        d=+1, c=0.80, r=0.90
+  Yugo          d=+1, c=0.70, r=0.80
+[Step 3] Rule 1 — Minimum Confidence Threshold
+✅ Confidence threshold satisfied.
+[Step 4] Rule 2 — Directional Conflict Check
+✅ No critical directional conflict detected.
+[Step 5] Rule 3 — Normalized Total Vibe Check
+✅ |V| = 0.75 ≥ 0.5 → Directional coherence reached.
+[Step 6] Value Computation and Statistical Test
+🟢 Significant positive value → BUY.
 
 🎉 ANALYSIS COMPLETE!
 ============================================================
 Final Recommendation: BUY
 Consensus Reached: Yes
-Conversation Length: 9 messages
+Consensus Method: Sophisticated Protocol
+Conversation Length: 6 messages
 
 📈 Recommendation Breakdown:
   BUY: 2
-  SELL: 1
 
 👥 Individual Agent Positions:
   Wassim (Fundamental Agent): BUY
-  Khizar (Sentiment Agent): SELL
   Yugo (Valuation Agent): BUY
 
 Would you like to analyze another stock? (y/n):
@@ -248,6 +283,7 @@ Ai-Agent/
 ├── interactive_cli.py        # Main interactive CLI application
 ├── indicator_forecaster.py   # Technical indicator forecasting module
 ├── macro_var_analyzer.py     # Macro VAR/Granger causality analysis
+├── consensus_mechanism.py    # Sophisticated consensus protocol
 ├── arima_forecaster.py       # Legacy ARIMA forecasting module
 ├── requirements.txt          # Python dependencies
 ├── setup.py                  # Quick setup script
@@ -355,8 +391,9 @@ To add a new agent (e.g., Technical Analysis):
 ### Modifying Debate Structure
 
 - Change `max_turns=9` to adjust debate length
-- Modify consensus detection logic in `analyze_consensus()`
+- Modify consensus detection logic in `analyze_consensus()` and `consensus_mechanism.py`
 - Customize message formatting and display
+- Adjust consensus protocol rules in `consensus_mechanism.py`
 
 ### Integration with Real Data
 
