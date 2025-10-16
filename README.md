@@ -52,8 +52,8 @@ A sophisticated multi-agent system that combines technical indicator-based forec
 
 ### Two Specialized AI Agents
 
-- **🧮 Wassim (Fundamental Agent)**: Analyzes financial statements, ratios, business fundamentals, and **macro VAR/Granger causality analysis**
-- **📈 Yugo (Valuation Agent)**: Performs DCF modeling, quantitative valuation analysis, and **technical indicator-based forecasting**
+- **🧮 Wassim (Fundamental Agent)**: Analysis using macro VAR/Granger causality analysis
+- **📈 Yugo (Valuation Agent)**: Technical indicator-based forecasting
 
 ### Interactive Debate System
 
@@ -120,7 +120,7 @@ python interactive_cli.py
 
 **Example Session**:
 ```
-🤖 Financial Analysis Multi-Agent System with ARIMA Forecasting
+🤖 Financial Analysis Multi-Agent System
 ======================================================================
 Enter CSV file path with historical data (or press Enter to skip): stock_data.csv
 
