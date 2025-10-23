@@ -1,6 +1,6 @@
 # AI Financial Analysis Multi-Agent System
 
-A sophisticated multi-agent system that combines technical indicator-based forecasting with macro VAR/Granger causality analysis. Two specialized AI agents (Fundamental and Valuation analysts) provide BUY/SELL recommendations based on comprehensive quantitative analysis and engage in interactive debates to reach consensus.
+A sophisticated multi-agent system that combines sector-based fundamental analysis, ARIMA regime-switching forecasts, and consensus-driven investing. Two specialized AI agents (Wassim: Fundamental Analyst & Yugo: Valuation Analyst) engage in interactive debates to reach consensus on portfolio construction, using a sophisticated filter to validate investment decisions.
 
 ## 🚀 Quick Start
 
@@ -48,12 +48,58 @@ A sophisticated multi-agent system that combines technical indicator-based forec
    python interactive_cli.py
    ```
 
+### 🌐 100% API-Based System (No CSV Files!)
+
+All data fetched automatically from:
+- **Yahoo Finance**: Stock prices, fundamentals (PBR/ROE/ROA)
+
+### 🎯 Integrated Analysis Workflow
+
+**Complete sector-based portfolio analysis with AI agents and consensus-driven investing:**
+
+#### Full Workflow:
+1. **Input**: Stocks in the same sector (recommend 5-10 tickers)
+2. **Yahoo Finance**: Fetches prices + fundamentals (PBR/ROE/ROA)
+3. **Wassim (Fundamental Agent)**: Sector comparison, percentile rankings, composite scores
+4. **Yugo (Valuation Agent)**: ARIMA regime-switching forecasts (low/medium/high volatility regimes)
+5. **Agent Debate**: 3 rounds each using sophisticated consensus mechanism
+6. **Consensus Filter**: Validates/warns/vetoes investment decision (BUY/HOLD/SELL)
+7. **Portfolio Construction**: Top-ranked stocks with equal-weight or inverse-volatility strategy
+8. **Backtesting**: Performance metrics (CAGR, Sharpe, MaxDD), equity curves with 3 visualizations
+
+**Run it:**
+```bash
+python interactive_cli.py
+# Enter sector tickers: AAPL,MSFT,GOOGL,AMZN,META,NVDA,TSLA,AMD,INTC,CRM
+# Start date: 2020-01-01
+# Construct portfolio: y
+# Top stocks: 5
+# Strategy: invvol
+```
+
+**Complete Output:**
+- ✅ Sector fundamentals comparison (Z-scores, percentiles, rankings)
+- ✅ ARIMA regime forecast (current regime + 5-step forecast)
+- ✅ Complete AI agent debate transcript with BUY/HOLD/SELL recommendations
+- ✅ Consensus analysis (direction, confidence, reliability scores)
+- ✅ **Consensus Filter** (agents influence portfolio decision):
+  - 🔴 **SELL**: Warns user, requires override to proceed
+  - ⚪ **HOLD**: Caution message, suggests smaller positions
+  - 🟢 **BUY**: Green light for portfolio construction
+- ✅ Portfolio backtest metrics (CAGR, Sharpe, MaxDD)
+- ✅ **Charts (3 visualizations)**:
+  - `sector_portfolio_[Sector]_YYYYMMDD_HHMMSS.png` (Equity curve)
+  - `cumulative_return_[Sector]_YYYYMMDD_HHMMSS.png` (Cumulative return %)
+  - `rolling_sharpe_[Sector]_YYYYMMDD_HHMMSS.png` (60-day rolling Sharpe ratio)
+
+**Detailed guide:** See `SECTOR_ANALYSIS_GUIDE.md`
+
 ## 🎯 Features
 
 ### Two Specialized AI Agents
 
-- **🧮 Wassim (Fundamental Agent)**: Analysis using macro VAR/Granger causality analysis
-- **📈 Yugo (Valuation Agent)**: Technical indicator-based forecasting
+- **🧮 Wassim (Fundamental Agent)**: Sector comparison analysis using PBR/ROE/ROA with percentile rankings and composite scoring
+- **📈 Yugo (Valuation Agent)**: ARIMA regime-switching forecasts identifying low/medium/high volatility regimes
 
 ### Interactive Debate System
 
@@ -63,6 +109,31 @@ A sophisticated multi-agent system that combines technical indicator-based forec
 - **Statistical Validation**: t-test and weighted scoring for investment decisions
 - **Real-time Analysis**: Watch agents debate and build consensus in real-time
 - **Comprehensive Reports**: Get detailed breakdowns of individual agent positions with consensus method
+
+#### Consensus Filter (Portfolio Decision Gate)
+
+After agent debate, the consensus recommendation **directly influences** portfolio construction:
+
+- **🔴 SELL Consensus**: 
+  - System warns against portfolio construction
+  - User must explicitly override to proceed
+  - Prevents investment in sectors with poor outlook
+  
+- **⚪ HOLD Consensus**: 
+  - Caution message displayed
+  - Suggests proceeding with smaller position sizes
+  - Indicates mixed signals or fair valuation
+  
+- **🟢 BUY Consensus**: 
+  - Green light for portfolio construction
+  - Displays consensus strength (confidence × reliability)
+  - Strong consensus (>0.7) adds conviction
+
+**Key Metrics Displayed**:
+- Agent consensus direction (BUY/HOLD/SELL)
+- Average confidence (0.0-1.0)
+- Average reliability (0.0-1.0)
+- Consensus strength (confidence × reliability)
 
 ### Local AI Processing
 
@@ -355,17 +426,22 @@ Edit the system messages in `interactive_cli.py` (lines 33-101) to customize age
 
 ```
 Ai-Agent/
-├── README.md                 # This file
-├── interactive_cli.py        # Main interactive CLI application
-├── indicator_forecaster.py   # Technical indicator forecasting module
-├── macro_var_analyzer.py     # Macro VAR/Granger causality analysis
-├── consensus_mechanism.py    # Sophisticated consensus protocol
-├── arima_forecaster.py       # Legacy ARIMA forecasting module
-├── requirements.txt          # Python dependencies
-├── setup.py                  # Quick setup script
-├── test_arima.py            # Legacy ARIMA tests
-├── .gitignore               # Git ignore file
-└── autogen/                 # AutoGen framework (submodule)
+├── README.md                     # This file
+├── interactive_cli.py            # Main interactive CLI (3 modes)
+├── indicator_forecaster.py       # Technical indicator forecasting
+├── macro_var_analyzer.py         # Macro VAR/Granger causality
+├── arima_regime_switching.py     # ARIMA with regime detection (NEW)
+├── sector_comparator.py          # Sector relative valuation (NEW)
+├── data_fetchers.py              # Yahoo Finance & FRED data
+├── portfolio_constructor.py      # Equal-weight & inverse-vol
+├── backtester.py                 # Portfolio backtesting engine
+├── consensus_mechanism.py        # 7-step consensus protocol
+├── requirements.txt              # Python dependencies
+├── set_fred_key.sh              # FRED API key helper
+├── SECTOR_ANALYSIS_GUIDE.md      # Mode 3 documentation (NEW)
+├── PORTFOLIO_SYSTEM_SUMMARY.md   # Technical overview
+├── QUICKSTART_PORTFOLIO.md       # Usage guide
+└── autogen/                      # AutoGen framework (submodule)
 ```
 
 ## 🚨 Troubleshooting
@@ -473,11 +549,11 @@ To add a new agent (e.g., Technical Analysis):
 
 ### Integration with Real Data
 
-The system is designed to work with real financial data. You can:
+The system works with real financial data:
 
-- Connect to financial APIs (Alpha Vantage, Yahoo Finance)
-- Add real-time stock data fetching
-- Integrate with portfolio management systems
+- Yahoo Finance for equities via `yfinance`
+- FRED macroeconomic series via `fredapi` (set `FRED_API_KEY`)
+- Portfolio construction and backtesting now included in `interactive_cli.py`
 
 ## 🤝 Contributing
 
