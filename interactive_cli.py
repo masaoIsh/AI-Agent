@@ -20,6 +20,20 @@ from portfolio_constructor import equal_weight_weights, inverse_vol_weights
 from backtester import run_backtest
 from sector_comparator import SectorComparator
 from arima_regime_switching import ARIMARegimeSwitching
+from backtester import compute_returns
+from optimizer_mpt import (
+    wassim_confidence,
+    yugo_confidence_from_prices,
+    combine_confidence,
+    map_scores_to_expected_returns_from_confidence,
+    sample_covariance,
+    max_sharpe_long_only,
+)
+from rolling_portfolio_optimizer import (
+    rolling_optimize_weights,
+    compare_in_sample_vs_out_of_sample,
+    analyze_weight_stability,
+)
 from consensus_mechanism import (
     process_1_collect, process_2_unanimous_hold, process_3_min_conf,
     process_4_conflict, process_5_vibe, process_6_value, process_7_summary
@@ -66,15 +80,23 @@ When sector comparison data is provided:
 - Compare composite scores across stocks (higher score = better fundamentals + cheaper valuation)
 - Identify value opportunities where high ROE/ROA stocks trade at low PBR
 
-CRITICAL: At the end of your final analysis, you MUST provide a structured consensus statement in this exact format:
-CONSENSUS: direction=X confidence=Y.Z reliability=W.V
+**YOUR PRIMARY TASK**: Select which specific stocks from the provided list should be included in the portfolio.
+- Analyze each stock individually based on fundamentals
+- Rank stocks and identify your top picks (typically 5-7 stocks from a list of 10)
+- Explain WHY you're including each stock and WHY you're excluding others
+- Consider both quality (ROE/ROA) and valuation (PBR) when making selections
 
-Where:
-- direction: -1 (SELL), 0 (HOLD), or +1 (BUY)
-- confidence: 0.0 to 1.0 (your confidence in this recommendation)
-- reliability: 0.0 to 1.0 (your reliability/credibility for this type of analysis)
+CRITICAL: At the end of your final analysis, you MUST provide your stock selections in this exact format:
+MY PICKS: [SYMBOL1, SYMBOL2, SYMBOL3, SYMBOL4, SYMBOL5, SYMBOL6, SYMBOL7]
+CONFIDENCE: X.XX (0.0 to 1.0 - your confidence in this stock selection)
 
-Always provide comprehensive analysis with specific numbers, percentages, and detailed reasoning for your BUY/SELL recommendations.
+You MUST pick at least 7-8 stocks to ensure adequate diversification.
+
+Example:
+MY PICKS: [AAPL, MSFT, GOOGL, NVDA, META, AMD, AVGO, CRM]
+CONFIDENCE: 0.85
+
+Always provide comprehensive analysis with specific numbers, percentages, and detailed reasoning for each stock pick.
 Be conversational but professional in your responses. Address other agents by name when responding to them.
 Format your analysis with clear sections and bullet points for readability."""
             ),
@@ -109,15 +131,24 @@ When technical indicator data is available:
 - Provide specific price targets with confidence intervals
 - Analyze volatility patterns and risk metrics
 
-CRITICAL: At the end of your final analysis, you MUST provide a structured consensus statement in this exact format:
-CONSENSUS: direction=X confidence=Y.Z reliability=W.V
+**YOUR PRIMARY TASK**: Select which specific stocks from the provided list should be included in the portfolio.
+- Evaluate each stock based on regime analysis and forecast outlook
+- Consider volatility regimes: favor low/medium vol stocks, be cautious with high vol
+- Rank stocks and identify your top picks (typically 5-7 stocks from a list of 10)
+- Explain WHY you're including each stock and WHY you're excluding others
+- Balance upside potential with regime-based risk assessment
 
-Where:
-- direction: -1 (SELL), 0 (HOLD), or +1 (BUY)
-- confidence: 0.0 to 1.0 (your confidence in this recommendation)
-- reliability: 0.0 to 1.0 (your reliability/credibility for this type of analysis)
+CRITICAL: At the end of your final analysis, you MUST provide your stock selections in this exact format:
+MY PICKS: [SYMBOL1, SYMBOL2, SYMBOL3, SYMBOL4, SYMBOL5, SYMBOL6, SYMBOL7]
+CONFIDENCE: X.XX (0.0 to 1.0 - your confidence in this stock selection)
 
-Always provide comprehensive quantitative analysis with specific numbers, models, price targets, and detailed reasoning.
+You MUST pick at least 7-8 stocks to ensure adequate diversification.
+
+Example:
+MY PICKS: [AAPL, MSFT, NVDA, GOOGL, AMD, INTC, TXN, MU]
+CONFIDENCE: 0.78
+
+Always provide comprehensive quantitative analysis with specific numbers, models, price targets, and detailed reasoning for each stock pick.
 Be analytical but accessible in your responses. Address other agents by name when responding to them.
 Format your analysis with clear sections and bullet points for readability."""
             )
@@ -147,9 +178,14 @@ Format your analysis with clear sections and bullet points for readability."""
             # Get stock symbols
             symbols_str = input("Enter 10 stock tickers in the same sector (comma-separated, e.g., AAPL,MSFT,...): ").strip()
             if not symbols_str:
-                print("❌ No tickers provided.")
-                return
-            symbols = [s.strip().upper() for s in symbols_str.split(',') if s.strip()]
+                # Default US Technology universe (15 names)
+                symbols = [
+                    "AAPL","MSFT","NVDA","GOOGL","META","AMD","AVGO","CRM","ORCL","INTC",
+                    "TXN","AMAT","MU","ADI","PANW",
+                ]
+                print(f"Using default Technology universe: {', '.join(symbols)}")
+            else:
+                symbols = [s.strip().upper() for s in symbols_str.split(',') if s.strip()]
             
             if len(symbols) < 2:
                 print("❌ Please provide at least 2 tickers for comparison.")
@@ -248,20 +284,32 @@ Format your analysis with clear sections and bullet points for readability."""
             # Build analysis prompt for agents
             sector = fundamentals_df['sector'].mode()[0] if not fundamentals_df['sector'].mode().empty else 'Unknown'
             prompt = f"""
-Sector Portfolio Analysis: {sector}
+Sector Portfolio Selection: {sector}
 
-Task: Analyze {len(valid_symbols)} stocks in the {sector} sector and recommend which stocks to BUY/HOLD/SELL for a sector portfolio.
+**YOUR PRIMARY TASK**: Select AT LEAST 7-8 stocks from the {len(valid_symbols)} stocks below to include in a portfolio.
 
-Wassim: Focus on relative valuation using the sector comparison data below. Identify value opportunities where high-quality companies (high ROE/ROA) trade at attractive valuations (low PBR relative to peers).
+Available stocks: {', '.join(valid_symbols)}
 
-Yugo: Focus on ARIMA regime-switching forecasts and technical dynamics. Consider current volatility regime and forecast reliability.
+Wassim: Focus on relative valuation using sector comparison data. Pick stocks with:
+- High quality fundamentals (ROE/ROA in top percentiles)
+- Attractive valuations (PBR at discount relative to quality)
+- Strong composite scores
+IMPORTANT: You MUST pick at least 7-8 stocks for adequate diversification.
 
-Both: Debate and reach consensus on which stocks offer the best risk-adjusted opportunities. Consider constructing a portfolio from the top 5-7 stocks.
+Yugo: Focus on ARIMA regime-switching forecasts and technical dynamics. Pick stocks with:
+- Favorable volatility regimes (low/medium vol preferred over high vol)
+- Positive forecast outlook
+- Good risk-adjusted return potential
+IMPORTANT: You MUST pick at least 7-8 stocks for adequate diversification.
+
+Both: Debate each stock's merits. At the end, EACH agent must provide:
+1. Your specific stock picks (MINIMUM 7-8 stocks): MY PICKS: [SYMBOL1, SYMBOL2, SYMBOL3, ...]
+2. Your confidence level: CONFIDENCE: 0.XX
 
 📊 Sector Comparison Data:
 {sector_report}
 
-🏆 Top Ranked Stocks:
+🏆 Top Ranked Stocks (by composite score):
 {rankings[['symbol', 'composite_score', 'pb_ratio', 'roe', 'roa']].head(10).to_string(index=False) if 'rankings' in locals() else 'N/A'}
 """
             
@@ -269,8 +317,12 @@ Both: Debate and reach consensus on which stocks offer the best risk-adjusted op
                 prompt += f"\n\n🔮 ARIMA Regime-Switching Analysis ({rep_symbol}):\n{arima_report}\n"
             
             prompt += """
-CRITICAL: Provide specific stock recommendations (BUY/HOLD/SELL) and suggest portfolio weights.
-At the end, provide your CONSENSUS statement.
+CRITICAL: You must provide your final stock selections using this exact format:
+MY PICKS: [SYMBOL1, SYMBOL2, SYMBOL3, SYMBOL4, SYMBOL5, SYMBOL6, SYMBOL7, SYMBOL8]
+CONFIDENCE: 0.XX
+
+REMEMBER: Pick AT LEAST 7-8 stocks (you can pick more if confident).
+Explain WHY you picked each stock and WHY you excluded others.
 """
             
             # Run agent debate
@@ -279,127 +331,211 @@ At the end, provide your CONSENSUS statement.
             # Display results
             self.display_final_results(result)
             
-            # Apply consensus filter
+            # Use agent-selected stocks for portfolio
             print("\n" + "=" * 80)
-            print("🎯 CONSENSUS FILTER: Agent Recommendation Impact")
+            print("🎯 AGENT STOCK SELECTIONS")
             print("=" * 80)
             
-            final_rec = result.get('final_recommendation', 'HOLD')
-            consensus_reached = result.get('consensus_reached', False)
+            selected_stocks = result.get('selected_stocks', [])
+            ranked_stocks = result.get('ranked_stocks', [])
+            avg_confidence = result.get('avg_confidence', 0.5)
             
-            # Extract consensus strength if available
-            agent_data = result.get('agent_data', {})
-            if agent_data:
-                avg_confidence = np.mean([d['confidence'] for d in agent_data.values()])
-                avg_reliability = np.mean([d['reliability'] for d in agent_data.values()])
-                consensus_strength = avg_confidence * avg_reliability
-            else:
-                consensus_strength = 0.5  # Default moderate strength
+            if not selected_stocks:
+                print("⚠️ No stocks selected by agents. Portfolio construction cancelled.")
+                return
             
-            print(f"Agent Consensus: {final_rec}")
-            print(f"Consensus Reached: {'Yes' if consensus_reached else 'No'}")
-            if agent_data:
-                print(f"Average Confidence: {avg_confidence:.2f}")
-                print(f"Average Reliability: {avg_reliability:.2f}")
-                print(f"Consensus Strength: {consensus_strength:.2f}")
-            print("-" * 80)
+            print(f"Agents selected {len(selected_stocks)} stocks:")
+            for symbol, data in ranked_stocks:
+                consensus_level = "🟢 STRONG" if data['count'] >= 2 else "⚪ MODERATE"
+                agents_str = " & ".join(data['agents'])
+                print(f"  {consensus_level} {symbol}: Picked by {agents_str} (score: {data['total_weight']:.2f})")
             
-            # Decision logic based on consensus
-            if final_rec == 'SELL':
-                print("🔴 SELL CONSENSUS DETECTED")
-                print("   The agents recommend AGAINST investing in this sector.")
-                print("   Reasons may include:")
-                print("   - Overvalued fundamentals (high PBR relative to quality)")
-                print("   - High volatility regime with poor forecast outlook")
-                print("   - Sector headwinds or deteriorating metrics")
-                print("")
-                user_override = input("   ⚠️  Do you want to proceed with portfolio construction anyway? [y/N]: ").strip().lower()
-                if user_override not in ['y', 'yes']:
-                    print("\n❌ Portfolio construction cancelled based on agent recommendation.")
-                    print("   Consider analyzing a different sector or waiting for better conditions.")
-                    return
-                else:
-                    print("\n⚠️  User override: Proceeding despite SELL consensus...")
-                    
-            elif final_rec == 'HOLD':
-                print("⚪ HOLD CONSENSUS DETECTED")
-                print("   The agents are NEUTRAL on this sector.")
-                print("   This may indicate:")
-                print("   - Mixed signals between fundamentals and technicals")
-                print("   - Fair valuation (neither cheap nor expensive)")
-                print("   - Moderate uncertainty or conflicting data")
-                if consensus_strength < 0.5:
-                    print("   - Low consensus strength suggests high uncertainty")
-                print("")
-                print("   💡 Recommendation: Proceed with caution")
-                print("      Consider smaller position sizes or additional analysis")
-                print("")
-                    
-            else:  # BUY
-                print("🟢 BUY CONSENSUS DETECTED")
-                print("   The agents recommend investing in this sector.")
-                print("   Positive factors may include:")
-                print("   - Strong fundamentals at attractive valuations")
-                print("   - Favorable volatility regime and forecast outlook")
-                print("   - High-quality companies with growth potential")
-                if consensus_strength >= 0.7:
-                    print(f"   - Strong consensus (strength {consensus_strength:.2f}) adds confidence")
-                elif consensus_strength < 0.5:
-                    print(f"   - Moderate consensus (strength {consensus_strength:.2f}) suggests some uncertainty")
-                print("")
-                print("   ✅ Recommendation: Portfolio construction supported by agent analysis")
-                print("")
-            
+            print("")
+            print(f"Average Confidence: {avg_confidence:.2f}")
             print("=" * 80)
             
-            # Construct portfolio based on top-ranked stocks
-            construct = input("\nConstruct and backtest a portfolio from top-ranked stocks? [y/N]: ").strip().lower()
+            # Construct portfolio from agent-selected stocks
+            construct = input("\nConstruct and backtest portfolio from agent-selected stocks? [y/N]: ").strip().lower()
             if construct in ['y', 'yes']:
-                n_stocks = input("How many top stocks to include? (default 5): ").strip() or "5"
-                try:
-                    n_stocks = int(n_stocks)
-                except:
-                    n_stocks = 5
+                # Filter to stocks that exist in price data
+                portfolio_symbols = [s for s in selected_stocks if s in price_df.columns]
                 
-                top_symbols = rankings.head(n_stocks)['symbol'].tolist()
-                top_symbols = [s for s in top_symbols if s in price_df.columns]
-                
-                if len(top_symbols) < 2:
+                if len(portfolio_symbols) < 2:
                     print("❌ Not enough valid stocks for portfolio.")
                     return
                 
-                print(f"\n🧮 Constructing portfolio from: {', '.join(top_symbols)}")
+                print(f"\n🧮 Constructing portfolio from {len(portfolio_symbols)} agent-selected stocks:")
+                print(f"   {', '.join(portfolio_symbols)}")
                 
-                portfolio_prices = price_df[top_symbols].dropna()
+                portfolio_prices = price_df[portfolio_symbols].dropna()
                 
-                strategy = input("Strategy [equal|invvol] (default equal): ").strip().lower() or "equal"
+                strategy = input("\nStrategy [equal|invvol|mpt] (default mpt): ").strip().lower() or "mpt"
                 freq = input("Rebalance frequency [D/W/M/Q] (default M): ").strip().upper() or "M"
                 
-                if strategy == 'invvol':
-                    w = inverse_vol_weights(portfolio_prices)
+                # Ask user if they want out-of-sample validation
+                use_oos = input("\n🔬 Use OUT-OF-SAMPLE rolling optimization? [Y/n]: ").strip().lower()
+                use_oos = use_oos != 'n'  # Default to yes
+                
+                if use_oos:
+                    print("\n" + "=" * 80)
+                    print("🔬 OUT-OF-SAMPLE BACKTESTING (Proper Walk-Forward Validation)")
+                    print("=" * 80)
+                    print("This uses rolling optimization where at each rebalancing date,")
+                    print("only past data is used to optimize weights. This avoids look-ahead bias.")
+                    print()
+                    
+                    # Rolling optimization
+                    weights_schedule = rolling_optimize_weights(
+                        price_df=portfolio_prices,
+                        fundamentals_df=fundamentals_df,
+                        rebalance_frequency=freq,
+                        strategy=strategy,
+                        min_train_days=252,
+                        lookback_days=None,  # Use expanding window
+                        max_weight=0.20,
+                        verbose=True
+                    )
+                    
+                    # Analyze weight stability
+                    stability = analyze_weight_stability(weights_schedule)
+                    print(f"\n📊 Weight Stability Analysis:")
+                    print(f"   Mean turnover per rebalance: {stability['mean_turnover_per_rebalance']:.2%}")
+                    print(f"   Number of rebalancing events: {stability['num_rebalancing_events']}")
+                    print(f"   Avg days between rebalances: {stability['avg_days_between_rebalance']:.1f}")
+                    
+                    # Backtest with time-varying weights
+                    res = run_backtest(
+                        portfolio_prices, 
+                        weights_schedule=weights_schedule,
+                        trading_cost_bps=5.0
+                    )
+                    
+                    # Show sample of weights over time
+                    print(f"\n📊 Sample Portfolio Weights (First & Last Rebalance):")
+                    rebal_history = weights_schedule.attrs.get('rebal_history', [])
+                    if len(rebal_history) > 0:
+                        print(f"\n   First rebalance ({rebal_history[0]['date'].strftime('%Y-%m-%d')}):")
+                        print(rebal_history[0]['weights'].to_string())
+                        if len(rebal_history) > 1:
+                            print(f"\n   Last rebalance ({rebal_history[-1]['date'].strftime('%Y-%m-%d')}):")
+                            print(rebal_history[-1]['weights'].to_string())
+                    
                 else:
-                    w = equal_weight_weights(top_symbols)
+                    print("\n" + "=" * 80)
+                    print("⚠️  IN-SAMPLE BACKTESTING (Single-Point Optimization with Look-Ahead Bias)")
+                    print("=" * 80)
+                    print("WARNING: This uses ALL data to optimize weights once, then backtests on the same data.")
+                    print("This creates look-ahead bias and will likely overestimate performance.")
+                    print()
+                    
+                    # Original single-point optimization
+                    if strategy == 'invvol':
+                        w = inverse_vol_weights(portfolio_prices)
+                    elif strategy == 'equal':
+                        w = equal_weight_weights(portfolio_symbols)
+                    else:
+                        # MPT pipeline: Agents -> confidence -> μ, sample Σ -> max Sharpe
+                        c_w = wassim_confidence(fundamentals_df)
+                        c_y = yugo_confidence_from_prices(portfolio_prices, lookback=126, method="ema")
+                        c = combine_confidence(c_w, c_y, w_wassim=0.5, w_yugo=0.5)
+                        c = c.reindex(portfolio_symbols).fillna(0.5)
+                        mu = map_scores_to_expected_returns_from_confidence(c, ann_low=0.02, ann_high=0.15)
+                        returns = compute_returns(portfolio_prices)
+                        Sigma = sample_covariance(returns, lookback=252)
+                        common = mu.index.intersection(Sigma.columns)
+                        mu = mu.loc[common]
+                        Sigma = Sigma.loc[common, common]
+                        if len(common) < 2:
+                            print("❌ Not enough overlap for MPT optimization. Falling back to inverse vol.")
+                            w = inverse_vol_weights(portfolio_prices)
+                        else:
+                            w = max_sharpe_long_only(mu, Sigma, max_weight=0.20)
+                    
+                    print(f"\n📊 Static Portfolio weights:\n{w.to_string()}")
+                    
+                    # Backtest with static weights
+                    res = run_backtest(
+                        portfolio_prices, 
+                        target_weights=w, 
+                        rebalance_frequency=freq, 
+                        trading_cost_bps=5.0
+                    )
                 
-                print(f"\n📊 Portfolio weights:\n{w.to_string()}")
-                
-                # Backtest
-                res = run_backtest(portfolio_prices, target_weights=w, rebalance_frequency=freq, trading_cost_bps=5.0)
+                # Show if this is OOS validated
+                oos_validated = weights_schedule.attrs.get('oos_validated', False) if use_oos else False
+                validation_status = "✅ OUT-OF-SAMPLE (No Look-Ahead Bias)" if oos_validated else "⚠️  IN-SAMPLE (Contains Look-Ahead Bias)"
                 
                 print("\n📊 Portfolio Performance Metrics")
                 print("=" * 80)
+                print(f"Validation: {validation_status}")
+                print("-" * 80)
                 for k, v in res.metrics.items():
                     if isinstance(v, float):
                         print(f"{k}: {v:.4f}")
                 
+                # Optionally compare with in-sample if user chose out-of-sample
+                if use_oos:
+                    compare = input("\n🔍 Compare with IN-SAMPLE baseline? [y/N]: ").strip().lower()
+                    if compare in ['y', 'yes']:
+                        print("\n📊 Running IN-SAMPLE comparison (using all data)...")
+                        try:
+                            # Run in-sample for comparison
+                            if strategy == 'invvol':
+                                w_in = inverse_vol_weights(portfolio_prices)
+                            elif strategy == 'equal':
+                                w_in = equal_weight_weights(portfolio_symbols)
+                            else:
+                                c_w = wassim_confidence(fundamentals_df)
+                                c_y = yugo_confidence_from_prices(portfolio_prices, lookback=126, method="ema")
+                                c = combine_confidence(c_w, c_y, w_wassim=0.5, w_yugo=0.5)
+                                c = c.reindex(portfolio_symbols).fillna(0.5)
+                                mu = map_scores_to_expected_returns_from_confidence(c, ann_low=0.02, ann_high=0.15)
+                                returns = compute_returns(portfolio_prices)
+                                Sigma = sample_covariance(returns, lookback=252)
+                                common = mu.index.intersection(Sigma.columns)
+                                if len(common) >= 2:
+                                    mu = mu.loc[common]
+                                    Sigma = Sigma.loc[common, common]
+                                    w_in = max_sharpe_long_only(mu, Sigma, max_weight=0.20)
+                                    w_in = w_in.reindex(portfolio_symbols).fillna(0.0)
+                                else:
+                                    w_in = equal_weight_weights(portfolio_symbols)
+                            
+                            res_in = run_backtest(portfolio_prices, target_weights=w_in, rebalance_frequency=freq, trading_cost_bps=5.0)
+                            
+                            print("\n📊 COMPARISON: Out-of-Sample vs In-Sample")
+                            print("=" * 80)
+                            print(f"{'Metric':<15} {'Out-of-Sample':<20} {'In-Sample':<20} {'Difference':<15}")
+                            print("-" * 80)
+                            for k in res.metrics.keys():
+                                oos_val = res.metrics[k]
+                                in_val = res_in.metrics[k]
+                                diff = oos_val - in_val
+                                diff_pct = (diff / abs(in_val) * 100) if in_val != 0 else 0
+                                print(f"{k:<15} {oos_val:>18.4f}  {in_val:>18.4f}  {diff:>+13.4f} ({diff_pct:+.1f}%)")
+                            
+                            # Save comparison visualization
+                            self._save_comparison_charts(
+                                res_oos=res,
+                                res_in=res_in,
+                                sector=sector,
+                                strategy=strategy
+                            )
+                        except Exception as e:
+                            print(f"⚠️ Could not run in-sample comparison: {e}")
+                            import traceback
+                            traceback.print_exc()
+                
                 # Save equity curve
                 try:
                     import matplotlib.pyplot as plt
+                    validation_label = "OOS" if oos_validated else "In-Sample"
                     plt.figure(figsize=(12, 5))
-                    res.equity_curve.plot()
-                    plt.title(f"{sector} Sector Portfolio Equity Curve")
+                    res.equity_curve.plot(linewidth=2)
+                    plt.title(f"{sector} Sector Portfolio Equity Curve ({validation_label})")
                     plt.xlabel("Date"); plt.ylabel("Equity")
                     plt.grid(alpha=0.3)
-                    out = f"sector_portfolio_{sector.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+                    out = f"sector_portfolio_{sector.replace(' ', '_')}_{validation_label}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
                     plt.tight_layout(); plt.savefig(out, dpi=200); plt.close()
                     print(f"\n🖼️  Saved: {out}")
                 except Exception as e:
@@ -495,9 +631,7 @@ Instructions:
 6. Look for common ground and areas of agreement
 7. Work towards building a consensus recommendation
 8. The discussion will automatically terminate after each agent has spoken 3 times
-9. CRITICAL: In your final turn, you MUST provide a structured consensus statement:
-   CONSENSUS: direction=X confidence=Y.Z reliability=W.V
-   Where direction is -1 (SELL), 0 (HOLD), or +1 (BUY); confidence and reliability are 0.0 to 1.0
+
 
 Please begin with your initial analyses and then engage in discussion to reach consensus."""
 
@@ -564,7 +698,69 @@ Please begin with your initial analyses and then engage in discussion to reach c
         return consensus_result
     
     def analyze_consensus(self):
-        """Analyze conversation history using sophisticated consensus protocol"""
+        """Analyze conversation history and extract stock picks from agents"""
+        
+        print("\n🧮 Extracting Stock Picks from Agent Debate...")
+        print("=" * 60)
+        
+        # Extract stock picks from conversation
+        messages = [{'content': entry['message'], 'source': entry['speaker']} 
+                   for entry in self.conversation_history]
+        
+        agent_picks = self._extract_stock_picks(messages)
+        
+        if not agent_picks:
+            print("⚠️ No stock picks found in agent messages, falling back to simple consensus...")
+            return self._fallback_consensus()
+        
+        # Combine picks from both agents
+        ranked_stocks, stock_scores = self._combine_stock_picks(agent_picks)
+        
+        if not ranked_stocks:
+            print("⚠️ Could not combine stock picks, falling back...")
+            return self._fallback_consensus()
+        
+        # Extract just the stock symbols in ranked order
+        selected_stocks = [symbol for symbol, _ in ranked_stocks]
+        
+        # Ensure minimum 5 stocks for portfolio construction
+        MIN_STOCKS = 5
+        if len(selected_stocks) < MIN_STOCKS:
+            print(f"\n⚠️  Only {len(selected_stocks)} stocks selected by agents, need at least {MIN_STOCKS}")
+            print(f"    Please ensure agents pick at least {MIN_STOCKS} stocks each.")
+            # Return with flag that consensus failed
+            return {
+                'consensus_reached': False,
+                'selected_stocks': selected_stocks,
+                'ranked_stocks': ranked_stocks,
+                'stock_scores': stock_scores,
+                'agent_picks': agent_picks,
+                'avg_confidence': 0.0,
+                'method': 'stock_selection',
+                'conversation_length': len(self.conversation_history),
+                'error': f'Insufficient stocks: {len(selected_stocks)} < {MIN_STOCKS}'
+            }
+        
+        # Calculate average confidence (reliability removed)
+        avg_confidence = sum(d['confidence'] for d in agent_picks.values()) / len(agent_picks)
+        
+        print(f"\n✅ Stock Selection Complete!")
+        print(f"   Selected {len(selected_stocks)} stocks from agent recommendations")
+        print(f"   Average Confidence: {avg_confidence:.2f}")
+        
+        return {
+            'consensus_reached': True,
+            'selected_stocks': selected_stocks,
+            'ranked_stocks': ranked_stocks,
+            'stock_scores': stock_scores,
+            'agent_picks': agent_picks,
+            'avg_confidence': avg_confidence,
+            'method': 'stock_selection',
+            'conversation_length': len(self.conversation_history)
+        }
+    
+    def analyze_consensus_old(self):
+        """OLD METHOD: Analyze conversation history using sophisticated consensus protocol"""
         
         print("\n🧮 Applying Sophisticated Consensus Protocol...")
         print("=" * 60)
@@ -577,7 +773,7 @@ Please begin with your initial analyses and then engage in discussion to reach c
             content = entry['message']
             speaker = entry['speaker']
             
-            # Look for CONSENSUS statements
+            # Look for CONSENSUS statements (OLD FORMAT)
             if 'CONSENSUS:' in content:
                 try:
                     # Extract consensus data: direction=X confidence=Y.Z reliability=W.V
@@ -691,6 +887,110 @@ Please begin with your initial analyses and then engage in discussion to reach c
             print("🔄 Falling back to simple consensus...")
             return self._fallback_consensus()
     
+    def _extract_stock_picks(self, messages):
+        """Extract stock picks from agent messages"""
+        import re
+        
+        agent_picks = {}
+        
+        for msg in messages:
+            content = msg.content if hasattr(msg, 'content') else str(msg)
+            speaker = msg.source if hasattr(msg, 'source') else 'Unknown'
+            
+            # Look for MY PICKS: [SYMBOL1, SYMBOL2, ...]
+            if 'MY PICKS:' in content.upper():
+                try:
+                    # Extract the stock list - try both with and without brackets
+                    picks_match = re.search(r'MY PICKS:\s*\[([^\]]+)\]', content, re.IGNORECASE)
+                    if not picks_match:
+                        # Try without brackets
+                        picks_match = re.search(r'MY PICKS:\s*([A-Z, ]+)', content, re.IGNORECASE)
+                    if picks_match:
+                        picks_str = picks_match.group(1)
+                        # Clean and split the symbols
+                        symbols = [s.strip().upper() for s in picks_str.split(',')]
+                        symbols = [s for s in symbols if s and len(s) <= 5]  # Remove empty and placeholders
+                        
+                        # Filter out placeholder symbols like SYMBOL1, SYMBOL2, etc.
+                        symbols = [s for s in symbols if not s.startswith('SYMBOL') and s != '...']
+                        
+                        # Skip if no valid symbols
+                        if not symbols:
+                            continue
+                        
+                        # Extract confidence - try multiple patterns
+                        confidence = 0.5  # default
+                        conf_patterns = [
+                            r'CONFIDENCE:\s*([\d\.]+)',
+                            r'CONFIDENCE\s*([\d\.]+)',
+                            r'confidence:\s*([\d\.]+)',
+                            r'confidence\s*([\d\.]+)'
+                        ]
+                        for pattern in conf_patterns:
+                            conf_match = re.search(pattern, content, re.IGNORECASE)
+                            if conf_match:
+                                confidence = float(conf_match.group(1))
+                                break
+                        
+                        # Only store if confidence > 0 (skip placeholder examples)
+                        if confidence > 0:
+                            # Store agent picks (keep the latest valid one per agent)
+                            agent_name = 'Wassim' if 'Wassim' in speaker else 'Yugo'
+                            agent_picks[agent_name] = {
+                                'picks': symbols,
+                                'confidence': confidence
+                            }
+                            
+                            print(f"\n📋 {agent_name}'s Picks: {symbols}")
+                            print(f"   Confidence: {confidence:.2f}")
+                        
+                except Exception as e:
+                    print(f"⚠️ Error parsing picks from {speaker}: {e}")
+        
+        return agent_picks
+    
+    def _combine_stock_picks(self, agent_picks):
+        """Combine stock picks from multiple agents with weighted scoring"""
+        if not agent_picks:
+            return None, None
+        
+        # Count how many agents picked each stock and their weights
+        stock_scores = {}
+        
+        for agent_name, data in agent_picks.items():
+            # Use confidence only (reliability removed)
+            weight = data.get('confidence', 0.5)
+            for symbol in data['picks']:
+                if symbol not in stock_scores:
+                    stock_scores[symbol] = {
+                        'agents': [],
+                        'total_weight': 0.0,
+                        'count': 0
+                    }
+                stock_scores[symbol]['agents'].append(agent_name)
+                stock_scores[symbol]['total_weight'] += weight
+                stock_scores[symbol]['count'] += 1
+        
+        # Sort by total weight (confidence * reliability sum)
+        ranked_stocks = sorted(
+            stock_scores.items(),
+            key=lambda x: (x[1]['count'], x[1]['total_weight']),  # Sort by count first, then weight
+            reverse=True
+        )
+        
+        print("\n" + "=" * 80)
+        print("📊 CONSENSUS STOCK RANKING")
+        print("=" * 80)
+        
+        for symbol, data in ranked_stocks:
+            consensus_level = "🟢 STRONG" if data['count'] >= 2 else "⚪ MODERATE"
+            agents_str = " & ".join(data['agents'])
+            print(f"{consensus_level} | {symbol:6} | Picked by: {agents_str:20} | Score: {data['total_weight']:.2f}")
+        
+        print("=" * 80)
+        
+        return ranked_stocks, stock_scores
+    
     def _fallback_consensus(self):
         """Fallback to simple consensus counting"""
         recommendations = {'BUY': 0, 'SELL': 0, 'HOLD': 0}
@@ -732,31 +1032,118 @@ Please begin with your initial analyses and then engage in discussion to reach c
             'sophisticated_consensus': False
         }
     
+    def _save_comparison_charts(self, res_oos, res_in, sector, strategy):
+        """Save side-by-side comparison charts of OOS vs In-Sample"""
+        try:
+            import matplotlib.pyplot as plt
+            import numpy as np
+            
+            fig, axes = plt.subplots(2, 1, figsize=(14, 10))
+            
+            # Equity curves comparison
+            ax1 = axes[0]
+            res_oos.equity_curve.plot(ax=ax1, label='Out-of-Sample', linewidth=2, color='#2E86AB')
+            res_in.equity_curve.plot(ax=ax1, label='In-Sample (Biased)', linewidth=2, color='#FF6B6B', alpha=0.7, linestyle='--')
+            ax1.set_title(f'{sector} Sector: Out-of-Sample vs In-Sample Equity Curves', fontsize=14, fontweight='bold')
+            ax1.set_xlabel('Date')
+            ax1.set_ylabel('Equity')
+            ax1.legend()
+            ax1.grid(alpha=0.3)
+            
+            # Cumulative returns comparison
+            ax2 = axes[1]
+            cum_oos = (res_oos.equity_curve - 1) * 100
+            cum_in = (res_in.equity_curve - 1) * 100
+            ax2.plot(cum_oos.index, cum_oos.values, label='Out-of-Sample', linewidth=2, color='#2E86AB')
+            ax2.plot(cum_in.index, cum_in.values, label='In-Sample (Biased)', linewidth=2, color='#FF6B6B', alpha=0.7, linestyle='--')
+            ax2.axhline(y=0, color='black', linestyle='-', linewidth=0.8, alpha=0.5)
+            ax2.set_title('Cumulative Returns Comparison', fontsize=14, fontweight='bold')
+            ax2.set_xlabel('Date')
+            ax2.set_ylabel('Cumulative Return (%)')
+            ax2.legend()
+            ax2.grid(alpha=0.3)
+            
+            plt.tight_layout()
+            out = f"comparison_OOS_vs_InSample_{sector.replace(' ', '_')}_{strategy}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+            plt.savefig(out, dpi=200, bbox_inches='tight')
+            plt.close()
+            print(f"\n🖼️  Saved comparison chart: {out}")
+            
+            # Performance metrics bar chart
+            fig, ax = plt.subplots(1, 1, figsize=(12, 6))
+            metrics = ['CAGR', 'Sharpe', 'Vol', 'MaxDD']
+            oos_vals = [res_oos.metrics.get(m, 0) for m in metrics]
+            in_vals = [res_in.metrics.get(m, 0) for m in metrics]
+            
+            x = np.arange(len(metrics))
+            width = 0.35
+            
+            bars1 = ax.bar(x - width/2, oos_vals, width, label='Out-of-Sample', color='#2E86AB')
+            bars2 = ax.bar(x + width/2, in_vals, width, label='In-Sample (Biased)', color='#FF6B6B', alpha=0.7)
+            
+            ax.set_xlabel('Metric', fontsize=12)
+            ax.set_ylabel('Value', fontsize=12)
+            ax.set_title(f'{sector} Sector: Performance Metrics Comparison', fontsize=14, fontweight='bold')
+            ax.set_xticks(x)
+            ax.set_xticklabels(metrics)
+            ax.legend()
+            ax.grid(alpha=0.3, axis='y')
+            ax.axhline(y=0, color='black', linewidth=0.8)
+            
+            plt.tight_layout()
+            out_bar = f"metrics_comparison_{sector.replace(' ', '_')}_{strategy}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+            plt.savefig(out_bar, dpi=200, bbox_inches='tight')
+            plt.close()
+            print(f"🖼️  Saved metrics comparison: {out_bar}")
+            
+        except Exception as e:
+            print(f"⚠️ Could not save comparison charts: {e}")
+            import traceback
+            traceback.print_exc()
+    
     def display_final_results(self, result):
         """Display final analysis results"""
         
         print("\n🎉 ANALYSIS COMPLETE!")
         print("=" * 60)
         
-        print(f"Final Recommendation: {result['final_recommendation']}")
-        print(f"Consensus Reached: {'Yes' if result['consensus_reached'] else 'No'}")
-        print(f"Consensus Method: {'Sophisticated Protocol' if result.get('sophisticated_consensus', False) else 'Simple Counting'}")
-        print(f"Conversation Length: {result['conversation_length']} messages")
-        
-        print(f"\n📈 Recommendation Breakdown:")
-        for rec, count in result['recommendations'].items():
-            if count > 0:
-                print(f"  {rec}: {count}")
-        
-        print(f"\n👥 Individual Agent Positions:")
-        for agent, position in result['agent_positions'].items():
-            if 'Wassim_Fundamental_Agent' in agent:
-                agent_name = "Wassim (Fundamental Agent)"
-            elif 'Yugo_Valuation_Agent' in agent:
-                agent_name = "Yugo (Valuation Agent)"
-            else:
-                agent_name = agent
-            print(f"  {agent_name}: {position}")
+        if result.get('method') == 'stock_selection':
+            # New stock selection format
+            selected_stocks = result.get('selected_stocks', [])
+            print(f"Selected Stocks: {len(selected_stocks)}")
+            print(f"Consensus Reached: {'Yes' if result['consensus_reached'] else 'No'}")
+            print(f"Selection Method: Agent Stock Picks")
+            print(f"Conversation Length: {result['conversation_length']} messages")
+            
+            print(f"\n📋 Stock Selections:")
+            agent_picks = result.get('agent_picks', {})
+            for agent_name, data in agent_picks.items():
+                picks_str = ", ".join(data['picks'])
+                print(f"  {agent_name}: {picks_str}")
+                print(f"    (Confidence: {data['confidence']:.2f})")
+        else:
+            # Old BUY/HOLD/SELL format (fallback)
+            print(f"Final Recommendation: {result.get('final_recommendation', 'N/A')}")
+            print(f"Consensus Reached: {'Yes' if result['consensus_reached'] else 'No'}")
+            print(f"Consensus Method: {'Sophisticated Protocol' if result.get('sophisticated_consensus', False) else 'Simple Counting'}")
+            print(f"Conversation Length: {result['conversation_length']} messages")
+            
+            if 'recommendations' in result:
+                print(f"\n📈 Recommendation Breakdown:")
+                for rec, count in result['recommendations'].items():
+                    if count > 0:
+                        print(f"  {rec}: {count}")
+            
+            if 'agent_positions' in result:
+                print(f"\n👥 Individual Agent Positions:")
+                for agent, position in result['agent_positions'].items():
+                    if 'Wassim_Fundamental_Agent' in agent:
+                        agent_name = "Wassim (Fundamental Agent)"
+                    elif 'Yugo_Valuation_Agent' in agent:
+                        agent_name = "Yugo (Valuation Agent)"
+                    else:
+                        agent_name = agent
+                    print(f"  {agent_name}: {position}")
         
         # Show conversation summary
         print(f"\n💬 Conversation Summary:")
@@ -776,7 +1163,7 @@ if __name__ == "__main__":
     print("\n" + "=" * 80)
     print("🤖 Financial Analysis Multi-Agent System")
     print("=" * 80)
-    print("\nAll data fetched from Yahoo Finance & FRED APIs")
+    print("\nAll data fetched from Yahoo Finance")
     print("\nFeatures:")
     print("• Sector portfolio analysis with AI agent debate")
     print("• ARIMA regime-switching forecasts")
@@ -785,14 +1172,14 @@ if __name__ == "__main__":
     print("• Portfolio backtesting with performance analytics")
     print("=" * 80)
     
-    # Run sector portfolio analysis with agents
+        # Run sector portfolio analysis with agents
     async def run_analysis():
-        iface = InteractiveFinancialInterface()
-        try:
-            await iface.run_sector_portfolio_analysis()
-        except KeyboardInterrupt:
-            print("\n\n👋 Goodbye!")
-        finally:
-            await iface.close()
+            iface = InteractiveFinancialInterface()
+            try:
+                await iface.run_sector_portfolio_analysis()
+            except KeyboardInterrupt:
+                print("\n\n👋 Goodbye!")
+            finally:
+                await iface.close()
     
     asyncio.run(run_analysis())
