@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LLM based Multi-Agents as a Feeder for Equity Portfolio Optimization</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css?v=2" />
+  </head>
+  <body>
+    <div class="frame">
+      <header class="header">
+        <div class="brand">LLM based Multi-Agents as a Feeder for Equity Portfolio Optimization</div>
+        <div class="sub">Where algorithmic consensus drives capital allocation</div>
+      </header>
+
+      <main class="main">
+        <nav class="tabs">
+          <button class="tab-btn active" data-tab="input">Input</button>
+          <button class="tab-btn" data-tab="how-it-works">How it Works</button>
+        </nav>
+
+        <section class="panel" id="tab-input">
+          <div class="panel-title">Input exactly 10 tickers</div>
+          <form id="ticker-form" class="grid-10" autocomplete="off">
+            <input class="cell" placeholder="T1" maxlength="8" />
+            <input class="cell" placeholder="T2" maxlength="8" />
+            <input class="cell" placeholder="T3" maxlength="8" />
+            <input class="cell" placeholder="T4" maxlength="8" />
+            <input class="cell" placeholder="T5" maxlength="8" />
+            <input class="cell" placeholder="T6" maxlength="8" />
+            <input class="cell" placeholder="T7" maxlength="8" />
+            <input class="cell" placeholder="T8" maxlength="8" />
+            <input class="cell" placeholder="T9" maxlength="8" />
+            <input class="cell" placeholder="T10" maxlength="8" />
+          </form>
+
+          <button id="fill-default" class="fill-default">Fill in with default</button>
+
+          <div class="controls">
+            <label class="switch">
+              <input type="checkbox" id="use-oos" checked />
+              <span>Use OOS rolling optimization</span>
+            </label>
+            <label>
+              Rebalance
+              <select id="rebalance">
+                <option value="M" selected>Monthly</option>
+                <option value="Q">Quarterly</option>
+                <option value="W">Weekly</option>
+                <option value="D">Daily</option>
+              </select>
+            </label>
+            <label>
+              Strategy
+              <select id="strategy">
+                <option value="mpt" selected>MPT (Max Sharpe)</option>
+                <option value="invvol">Inverse Vol</option>
+                <option value="equal">Equal Weight</option>
+              </select>
+            </label>
+          </div>
+
+          <button id="run" class="run">Run Model</button>
+          <div id="status" class="status"></div>
+        </section>
+
+        <section class="panel" id="tab-how-it-works" hidden>
+          <div class="panel-title">Framework Architecture</div>
+          <div class="how-it-works-content">
+            <h3>Multi-Agent System</h3>
+            <p>Two specialized LLM agents collaborate to select stocks:</p>
+            
+            <div class="agent-cards">
+              <div class="agent-card">
+                <strong>Wassim (Fundamental Agent)</strong>
+                <p>Expert in relative valuation and fundamental analysis. Analyzes:</p>
+                <ul>
+                  <li>Price-to-Book: <code>PBR = P/B</code>, ROE: <code>ROE = Net Income / Equity</code>, ROA: <code>ROA = Net Income / Assets</code></li>
+                  <li>Sector positioning: percentile rankings, z-scores: <code>z = (x - μ) / σ</code></li>
+                  <li>Value opportunities: <code>Quality Score = f(ROE, ROA)</code> where <code>Valuation = g(PBR)</code></li>
+                  <li>Composite score: <code>C = α·ROE + β·ROA - γ·PBR</code></li>
+                </ul>
+              </div>
+
+              <div class="agent-card">
+                <strong>Yugo (Valuation Agent)</strong>
+                <p>Quantitative and technical analysis specialist. Evaluates:</p>
+                <ul>
+                  <li>ARIMA(p,d,q): <code>∇<sup>d</sup>X<sub>t</sub> = Σφ<sub>i</sub>∇<sup>d</sup>X<sub>t-i</sub> + Σθ<sub>j</sub>ε<sub>t-j</sub> + ε<sub>t</sub></code></li>
+                  <li>GARCH(1,1): <code>σ²<sub>t</sub> = ω + α·ε²<sub>t-1</sub> + β·σ²<sub>t-1</sub></code></li>
+                  <li>Volatility forecast: <code>E[σ²<sub>t+1</sub>] = ω / (1 - α - β)</code></li>
+                  <li>Sharpe ratio: <code>S = (μ - r<sub>f</sub>) / σ</code></li>
+                </ul>
+              </div>
+            </div>
+
+            <h3>Debate & Consensus Protocol</h3>
+            <p>Agents engage in structured debate to reach consensus:</p>
+            <ol>
+              <li><strong>Analysis Phase:</strong> Each agent independently analyzes all <code>n = 10</code> tickers using their specialized methods</li>
+              <li><strong>Initial Recommendations:</strong> Agents propose stock picks with confidence scores: <code>c<sub>i</sub> ∈ [0, 1]</code> for each stock <code>i</code></li>
+              <li><strong>Debate Rounds:</strong> Agents exchange perspectives, challenge assumptions, and refine selections over <code>k</code> rounds</li>
+              <li><strong>Consensus Building:</strong> Through multiple rounds, agents converge on a final portfolio selection using weighted consensus: <code>P<sub>final</sub> = Σ w<sub>j</sub> · P<sub>j</sub></code> where <code>w<sub>j</sub></code> weights agent <code>j</code>'s picks</li>
+              <li><strong>Final Selection:</strong> Consensus picks (typically <code>|P<sub>final</sub>| = 7-8</code> stocks) are extracted from the debate</li>
+            </ol>
+
+            <h3>Portfolio Optimization</h3>
+            <p>Selected stocks are optimized using Modern Portfolio Theory (MPT):</p>
+            <ul>
+              <li><strong>MPT (Max Sharpe):</strong> Maximizes <code>SR = (μ<sup>T</sup>w - r<sub>f</sub>) / √(w<sup>T</sup>Σw)</code> subject to <code>Σw<sub>i</sub> = 1</code>, <code>w<sub>i</sub> ≥ 0</code>, <code>w<sub>i</sub> ≤ 0.20</code> where <code>μ</code> is expected returns vector and <code>Σ</code> is covariance matrix</li>
+              <li><strong>Inverse Volatility:</strong> <code>w<sub>i</sub> = (1/σ<sub>i</sub>) / Σ<sub>j</sub>(1/σ<sub>j</sub>)</code> where <code>σ<sub>i</sub></code> is volatility of stock <code>i</code></li>
+              <li><strong>Equal Weight:</strong> <code>w<sub>i</sub> = 1/N</code> for all <code>i ∈ {1, ..., N}</code> selected stocks</li>
+            </ul>
+
+            <h3>Out-of-Sample Backtesting</h3>
+            <p>When "Use OOS rolling optimization" is enabled:</p>
+            <ul>
+              <li>Portfolio weights are re-optimized at each rebalance period <code>t</code> using only data <code>D<sub>≤t</sub></code> available at that time: <code>w<sub>t</sub> = optimize(D<sub>≤t</sub>)</code></li>
+              <li>Prevents look-ahead bias: <code>E[P<sub>t</sub>] = f(D<sub>≤t</sub>)</code>, not <code>f(D<sub>≤T</sub>)</code> where <code>T</code> is end date</li>
+              <li>Performance metrics: Sharpe <code>S = μ<sub>excess</sub> / σ<sub>returns</sub></code>, Max Drawdown <code>MDD = max<sub>t</sub>[(P<sub>peak</sub> - P<sub>t</sub>) / P<sub>peak</sub>]</code>, Cumulative Return <code>R<sub>cum</sub> = Π<sub>t</sub>(1 + r<sub>t</sub>) - 1</code></li>
+              <li>Trading costs: <code>TC = 5 bps × Σ<sub>i</sub>|Δw<sub>i</sub>|</code> where <code>Δw<sub>i</sub></code> is weight change per rebalance</li>
+            </ul>
+
+            <h3>Data Sources</h3>
+            <ul>
+              <li><strong>Yahoo Finance:</strong> Price data and fundamental metrics (PBR, ROE, ROA, sector classification)</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="panel" id="results" hidden>
+          <div class="panel-title">Results</div>
+          <div class="result-grid">
+            <div>
+              <div class="block-title">Agent Picks</div>
+              <pre id="agent-picks" class="mono"></pre>
+            </div>
+            <div>
+              <div class="block-title">Weights (last)</div>
+              <pre id="weights" class="mono"></pre>
+            </div>
+            <div>
+              <div class="block-title">Metrics</div>
+              <pre id="metrics" class="mono"></pre>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <div>Model constructed by Masao Ishihara, Wallayaporn Dhupatemiya, Yui Wagatsuma, Ngoc Pham, and Seoin Jeong</div>
+        <div><a href="/api/health" target="_blank">API health</a></div>
+      </footer>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+  </html>
+
+
