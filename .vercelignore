@@ -1,0 +1,28 @@
+# Ignore Python files and API directory for Vercel (frontend only)
+api/
+*.py
+*.pyc
+__pycache__/
+*.egg-info/
+requirements.txt
+requirements-api.txt
+
+# Ignore large data files and images not needed for frontend
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.pdf
+
+# Ignore other project files
+autogen/
+*.md
+!README.md
+.git/
+.vscode/
+.idea/
+
+# Keep only web/ folder for static deployment
+!web/
+!vercel.json
+
