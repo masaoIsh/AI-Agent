@@ -43,8 +43,11 @@ async function runModel() {
 
   status.textContent = 'Agents debating… optimizing… (this can take a bit)';
 
+  // Get API URL from environment variable or use default
+  const API_URL = window.API_URL || 'https://your-api.railway.app'; // Replace with your Railway/Render URL
+  
   try {
-    const resp = await fetch('/api/sector-analysis', {
+    const resp = await fetch(`${API_URL}/sector-analysis`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ symbols, start, end, rebalance, strategy, use_oos }),
