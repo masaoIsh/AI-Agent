@@ -1,0 +1,24 @@
+# Minimal requirements for Vercel API endpoint
+# Only essential packages to reduce bundle size
+
+# Core AutoGen dependencies
+autogen-agentchat>=0.7.5
+autogen-ext[openai]>=0.7.5
+
+# OpenAI client
+openai>=1.50.0
+
+# Data processing (minimal versions)
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Web API
+fastapi>=0.110.0
+pydantic>=2.0.0
+
+# Data sources
+yfinance>=0.2.54
+
+# Note: scipy, statsmodels, matplotlib excluded to reduce size
+# These may cause issues if needed by interactive_cli
+
