@@ -1,8 +1,6 @@
-# AI Financial Analysis Multi-Agent System
+# Multi-Agent Financial Analysis System
 
-A sophisticated multi-agent system that combines sector-based fundamental analysis, ARIMA regime-switching forecasts, and consensus-driven investing. Two specialized AI agents (Wassim: Fundamental Analyst & Yugo: Valuation Analyst) engage in interactive debates to reach consensus on portfolio construction, using a sophisticated filter to validate investment decisions.
-
-## 🚀 Quick Start
+A multi-agent system where agents with specialized financial roles engage in interactive debates to reach consensus on portfolio construction.
 
 ### Prerequisites
 
@@ -62,4 +60,4 @@ python interactive_cli.py
 
 - Built with [AutoGen](https://github.com/microsoft/autogen) framework
 - Uses [Ollama](https://ollama.ai/) for local AI inference
-- Inspired by collaborative AI research and multi-agent systems
+- Inspired by Blackrock's AlphaAgents framework
